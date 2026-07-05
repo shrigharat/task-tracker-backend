@@ -1,15 +1,22 @@
 {
   "name": "task-tracker-backend",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --target node20 --out-dir dist --clean",
+    "build:watch": "tsup src/index.ts --format esm --target node20 --out-dir dist --watch",
+    "serve": "node dist/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.8",
     "@hono/zod-validator": "^0.8.0",
+    "bcrypt": "^6.0.0",
     "hono": "^4.12.27",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.3",
     "rabbitmq-client": "^5.0.8",
     "redis": "^6.0.1",
@@ -17,11 +24,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@types/bcrypt": "^6.0.0",
     "@types/bun": "latest",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.1.0",
     "dotenv": "^17.4.2",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",
     "prettier": "^3.9.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.62.0"
   }

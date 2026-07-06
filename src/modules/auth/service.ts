@@ -1,5 +1,5 @@
 import { compare, hash } from 'bcrypt'
-import { User } from '../../db/models/user'
+import { User } from './mongo-model'
 import {
   UserEmailAlreadyExistsError,
   UserEmailNotRegisteredError,

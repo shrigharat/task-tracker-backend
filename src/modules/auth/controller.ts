@@ -1,12 +1,6 @@
-import { Handler } from 'hono'
-import { UserLoginSchema, UserRegistrationSchema } from '../../zod/user'
-import { compare, hash } from 'bcrypt'
-import { User } from '../../db/models/user'
-import { JWT_CONFIG } from '../../constants/jwt'
-import jwt from 'jsonwebtoken'
-import { setCookie } from 'hono/cookie'
-import { ENVIRONMENT_CONFIG } from '../../constants/environment'
-import { redisClient } from '../../redis/client'
+import { type Context, Handler } from 'hono'
+import { UserLoginSchema, UserRegistrationSchema } from './request-schema'
+import { redisClient } from '../../lib/redis/client'
 import {
   checkIfUserExists,
   createAccessToken,
@@ -16,26 +10,32 @@ import {
   setRefreshTokenInCookie,
 } from './service'
 import {
+  InvalidFormDataError,
   UserEmailAlreadyExistsError,
   UserEmailNotRegisteredError,
   UserEmailPasswordMismatchError,
 } from './errors'
 
-const registerUser: Handler = async ({ req, json }) => {
-  const formData = await req.formData()
+const validateUserRegistrationRequest = async (context: Context) => {
+  const formData = await context.req.formData()
   const email = formData.get('email')?.toString().toLowerCase() ?? ''
   const password = formData.get('password')?.toString() ?? ''
   const parsed = UserRegistrationSchema.safeParse({ email, password })
   if (!parsed.success) {
-    return json({ message: 'Invalid form data', error: parsed.error.cause, success: false }, 400)
+    throw new InvalidFormDataError()
   }
+  return parsed.data
+}
+
+const registerUser: Handler = async (context) => {
+  const parsedData = await validateUserRegistrationRequest(context)
   try {
-    await createUser(email, password)
-    return json({ success: true, message: 'User registered successfully' }, 201)
+    await createUser(parsedData.email, parsedData.password)
+    return context.json({ success: true, message: 'User registered successfully' }, 201)
   } catch (error: unknown) {
     console.error(error)
     if (error instanceof UserEmailAlreadyExistsError) {
-      return json(
+      return context.json(
         {
           message: 'User with this email already exists',
           error: error.message,
@@ -44,7 +44,17 @@ const registerUser: Handler = async ({ req, json }) => {
         409,
       )
     }
-    return json(
+    if (error instanceof InvalidFormDataError) {
+      return context.json(
+        {
+          message: 'Invalid form data',
+          error: error.message,
+          success: false,
+        },
+        400,
+      )
+    }
+    return context.json(
       {
         message: 'Failed to register user',
         error: 'Something went wrong',
@@ -55,23 +65,22 @@ const registerUser: Handler = async ({ req, json }) => {
   }
 }
 
-const loginUser: Handler = async (context) => {
+const validateUserLoginRequest = async (context: Context) => {
   const formData = await context.req.formData()
   const email = formData.get('email')?.toString() ?? ''
   const password = formData.get('password')?.toString() ?? ''
   const parsed = UserLoginSchema.safeParse({ email, password })
   if (!parsed.success) {
-    return context.json(
-      {
-        message: 'Invalid form data',
-        error: parsed.error.message,
-        success: false,
-      },
-      400,
-    )
+    throw new InvalidFormDataError()
   }
+  return parsed.data
+}
+
+const loginUser: Handler = async (context) => {
+  const parsedData = await validateUserLoginRequest(context)
+
   try {
-    const user = await checkIfUserExists(email, password)
+    const user = await checkIfUserExists(parsedData.email, parsedData.password)
     const accessToken = await createAccessToken(user._id.toString())
     const refreshToken = await createRefreshToken(user._id.toString())
 
@@ -86,6 +95,16 @@ const loginUser: Handler = async (context) => {
     return context.json({ success: true, message: 'Login successful' }, 200)
   } catch (error: unknown) {
     console.error(error)
+    if (error instanceof InvalidFormDataError) {
+      return context.json(
+        {
+          message: 'Invalid form data',
+          error: error.message,
+          success: false,
+        },
+        400,
+      )
+    }
     if (error instanceof UserEmailNotRegisteredError) {
       return context.json(
         {
@@ -117,4 +136,4 @@ const loginUser: Handler = async (context) => {
   }
 }
 
-export { registerUser, loginUser }
+export { registerUser, loginUser, validateUserRegistrationRequest, validateUserLoginRequest }

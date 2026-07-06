@@ -1,8 +1,7 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
-import { config } from 'dotenv'
-import { connect as connectToMongo } from './db/client'
-import { connectRedis } from './redis/client'
+import { connect as connectToMongo } from './lib/mongo/client'
+import { connectRedis } from './lib/redis/client'
 import { authRouter } from './modules/auth/routes'
 import {
   checkMissingRequiredEnvironmentVariables,

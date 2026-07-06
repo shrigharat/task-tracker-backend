@@ -20,5 +20,16 @@ class UserEmailAlreadyExistsError extends InvalidCredentialsError {
     this.message = 'User email already exists'
   }
 }
+class InvalidFormDataError extends InvalidCredentialsError {
+  constructor() {
+    super('InvalidFormDataError')
+    this.message = 'Invalid form data'
+  }
+}
 
-export { UserEmailNotRegisteredError, UserEmailPasswordMismatchError, UserEmailAlreadyExistsError }
+export {
+  UserEmailNotRegisteredError,
+  UserEmailPasswordMismatchError,
+  UserEmailAlreadyExistsError,
+  InvalidFormDataError,
+}

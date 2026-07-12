@@ -1,11 +1,11 @@
 import { rmqClient } from '../client'
 import { USER_SIGNUP_EMAIL_QUEUE } from '../config'
 import { UserSignupEmailEventSchema } from '../contracts/user-signup-email.event'
+import type { UserSignupEmailEvent } from '../contracts/user-signup-email.event'
 
 const startWelcomeEmailConsumer = async () => {
   if (!rmqClient) {
-    console.error('RMQ client not connected')
-    return
+    throw new Error('RMQ client not connected')
   }
 
   const channel = await rmqClient.createChannel()
@@ -15,8 +15,15 @@ const startWelcomeEmailConsumer = async () => {
     (msg) => {
       if (!msg) return
 
-      const signupEmailEvent = JSON.parse(msg.content.toString())
-      const parsedEvent = UserSignupEmailEventSchema.safeParse(signupEmailEvent)
+      let receivedEvent: UserSignupEmailEvent | undefined
+      try {
+        receivedEvent = JSON.parse(msg.content.toString())
+      } catch (error) {
+        console.error('Error parsing user signup email event', error)
+        channel.ack(msg)
+        return
+      }
+      const parsedEvent = UserSignupEmailEventSchema.safeParse(receivedEvent)
       if (!parsedEvent.success) {
         console.error('Invalid user signup email event', parsedEvent.error)
         channel.ack(msg)

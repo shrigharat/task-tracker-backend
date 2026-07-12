@@ -9,10 +9,7 @@ const connectRMQ = async (uri: string) => {
     _client.on('error', (err) => {
       console.error('RMQ error', err)
     })
-    _client.on('connect', () => {
-      console.log('RMQ connected')
-    })
-    _client.on('disconnect', () => {
+    _client.on('close', () => {
       console.log('RMQ disconnected')
     })
   }

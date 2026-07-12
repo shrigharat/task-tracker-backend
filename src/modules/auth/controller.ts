@@ -34,7 +34,7 @@ const registerUser: Handler = async (context) => {
   try {
     await createUser(parsedData.email, parsedData.password)
     if (userSignupEmailChannel) {
-      publishUserSignupEmail(parsedData.email, userSignupEmailChannel)
+      await publishUserSignupEmail(parsedData.email, userSignupEmailChannel)
     }
     return context.json({ success: true, message: 'User registered successfully' }, 201)
   } catch (error: unknown) {

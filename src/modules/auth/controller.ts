@@ -15,6 +15,8 @@ import {
   UserEmailNotRegisteredError,
   UserEmailPasswordMismatchError,
 } from './errors'
+import { publishUserSignupEmail } from '@/lib/rmq/publishers/user-signup.publisher'
+import { userSignupEmailChannel } from '@/lib/rmq/channels/user-signup-email'
 
 const validateUserRegistrationRequest = async (context: Context) => {
   const formData = await context.req.formData()
@@ -31,6 +33,9 @@ const registerUser: Handler = async (context) => {
   const parsedData = await validateUserRegistrationRequest(context)
   try {
     await createUser(parsedData.email, parsedData.password)
+    if (userSignupEmailChannel) {
+      publishUserSignupEmail(parsedData.email, userSignupEmailChannel)
+    }
     return context.json({ success: true, message: 'User registered successfully' }, 201)
   } catch (error: unknown) {
     console.error(error)

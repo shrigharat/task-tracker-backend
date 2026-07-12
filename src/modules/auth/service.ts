@@ -32,6 +32,7 @@ const checkIfUserExists = async (email: string, password: string) => {
  * @throws {UserEmailAlreadyExistsError}
  */
 const createUser = async (email: string, password: string) => {
+  console.log('Creating user...', email, password)
   try {
     const hashedPassword = await hash(password, 10)
     const newUser = await User.create({ email, password: hashedPassword })
@@ -43,6 +44,7 @@ const createUser = async (email: string, password: string) => {
       'code' in error &&
       (error as { code?: number }).code === 11000
     ) {
+      console.error(error)
       throw new UserEmailAlreadyExistsError()
     }
     throw error

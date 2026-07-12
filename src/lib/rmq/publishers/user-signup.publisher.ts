@@ -13,8 +13,16 @@ const publishUserSignupEmail = async (recipientEmail: string, channel: Channel) 
       recipientEmail,
     },
   }
-  channel.sendToQueue(USER_SIGNUP_EMAIL_QUEUE, Buffer.from(JSON.stringify(event)))
-  console.log(`Sent user signup email to ${recipientEmail}`)
+  const isPublished = channel.sendToQueue(
+    USER_SIGNUP_EMAIL_QUEUE,
+    Buffer.from(JSON.stringify(event)),
+  )
+  if (!isPublished) {
+    console.error(`Failed to publish user signup email to ${recipientEmail}`)
+  } else {
+    console.log(`Sent user signup email to ${recipientEmail}`)
+  }
+  return isPublished
 }
 
 export { publishUserSignupEmail }

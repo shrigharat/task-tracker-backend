@@ -31,6 +31,7 @@ const startServer = async () => {
   })
   await initializeUserSignupEmailChannel().catch((err) => {
     console.error('Error initializing user signup email channel', err)
+    process.exit(1)
   })
   serve({
     ...app,

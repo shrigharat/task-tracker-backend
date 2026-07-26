@@ -14,7 +14,6 @@ const createTaskRequestSchema = z.object({
   status: taskStatusEnum.optional(),
   assignee: z.string().optional(),
   priority: taskPriorityEnum.optional(),
-  createdBy: z.string(),
   deadline: z.string().optional(),
 })
 

@@ -10,7 +10,7 @@ import {
 import { connectRMQ } from './lib/rmq/client'
 import { initializeUserSignupEmailChannel } from './lib/rmq/channels/user-signup-email'
 import { tasksRouter } from './modules/task/routes'
-const app = new Hono()
+const app = new Hono<{ Variables: { userId: string } }>()
 
 app.route('/auth', authRouter)
 app.route('/tasks', tasksRouter)

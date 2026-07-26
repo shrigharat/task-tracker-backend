@@ -9,9 +9,11 @@ import {
 } from './constants/environment'
 import { connectRMQ } from './lib/rmq/client'
 import { initializeUserSignupEmailChannel } from './lib/rmq/channels/user-signup-email'
+import { tasksRouter } from './modules/task/routes'
 const app = new Hono()
 
 app.route('/auth', authRouter)
+app.route('/tasks', tasksRouter)
 
 const startServer = async () => {
   checkMissingRequiredEnvironmentVariables(ENVIRONMENT_CONFIG)

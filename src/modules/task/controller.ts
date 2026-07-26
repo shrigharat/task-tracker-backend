@@ -2,7 +2,11 @@ import type { Handler } from 'hono'
 import { isValidObjectId } from 'mongoose'
 import { TaskNotFoundError } from './errors'
 import { Task } from './mongo-model'
-import { createTaskRequestSchema, getTasksRequestSchema } from './request-schema'
+import {
+  createTaskRequestSchema,
+  getTasksRequestSchema,
+  updateTaskRequestSchema,
+} from './request-schema'
 
 type TaskEnvironment = {
   Variables: {
@@ -92,6 +96,38 @@ const getTaskById: Handler<TaskEnvironment> = async (context) => {
   }
 }
 
+const updateTaskById: Handler<TaskEnvironment> = async (context) => {
+  const { id } = context.req.param()
+
+  if (!isValidObjectId(id)) {
+    return context.json({ error: 'Invalid task ID', success: false }, 400)
+  }
+
+  try {
+    const requestBody = await context.req.json()
+    const parsedBody = updateTaskRequestSchema.safeParse(requestBody)
+    if (!parsedBody.success) {
+      return context.json({ error: parsedBody.error.message }, 400)
+    }
+
+    const task = await Task.findByIdAndUpdate(id, parsedBody.data, {
+      new: true,
+      runValidators: true,
+    })
+
+    if (!task) {
+      throw new TaskNotFoundError()
+    }
+
+    return context.json({ data: task, success: true, message: 'Task updated successfully' })
+  } catch (error) {
+    if (error instanceof TaskNotFoundError) {
+      return context.json({ error: error.message, success: false }, 404)
+    }
+    return context.json({ error: (error as Error).message }, 500)
+  }
+}
+
 const deleteTaskById: Handler<TaskEnvironment> = async (context) => {
   const { id } = context.req.param()
 
@@ -115,4 +151,4 @@ const deleteTaskById: Handler<TaskEnvironment> = async (context) => {
   }
 }
 
-export { createTask, deleteTaskById, getMyTasks, getTaskById, getTasks }
+export { createTask, deleteTaskById, getMyTasks, getTaskById, getTasks, updateTaskById }

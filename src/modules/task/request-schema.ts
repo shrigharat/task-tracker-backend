@@ -17,4 +17,9 @@ const createTaskRequestSchema = z.object({
   deadline: z.string().optional(),
 })
 
-export { getTasksRequestSchema, createTaskRequestSchema }
+const updateTaskRequestSchema = createTaskRequestSchema.partial().refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'At least one task field must be provided' },
+)
+
+export { getTasksRequestSchema, createTaskRequestSchema, updateTaskRequestSchema }

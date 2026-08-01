@@ -40,6 +40,26 @@ const getTasks: Handler<TaskEnvironment> = (context) => getTasksWithFilter(conte
 const getMyTasks: Handler<TaskEnvironment> = (context) =>
   getTasksWithFilter(context, { assignee: context.var.userId })
 
+const getTaskAnalytics: Handler<TaskEnvironment> = async (context) => {
+  try {
+    const tasksByStatus = await Task.aggregate<{ status: string; count: number }>([
+      {
+        $match: {
+          assignee: context.var.userId,
+          status: { $exists: true, $ne: 'completed' },
+        },
+      },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $project: { _id: 0, status: '$_id', count: 1 } },
+      { $sort: { status: 1 } },
+    ])
+
+    return context.json({ data: tasksByStatus, success: true })
+  } catch (error) {
+    return context.json({ error: (error as Error).message }, 500)
+  }
+}
+
 const createTask: Handler<TaskEnvironment> = async (context) => {
   try {
     const requestBody = await context.req.json()
@@ -140,4 +160,12 @@ const deleteTaskById: Handler<TaskEnvironment> = async (context) => {
   }
 }
 
-export { createTask, deleteTaskById, getMyTasks, getTaskById, getTasks, updateTaskById }
+export {
+  createTask,
+  deleteTaskById,
+  getMyTasks,
+  getTaskAnalytics,
+  getTaskById,
+  getTasks,
+  updateTaskById,
+}

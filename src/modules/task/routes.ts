@@ -4,6 +4,7 @@ import {
   createTask,
   deleteTaskById,
   getMyTasks,
+  getTaskAnalytics,
   getTaskById,
   getTasks,
   updateTaskById,
@@ -15,6 +16,7 @@ tasksRouter.use('*', requireAuthentication)
 tasksRouter.get('/', getTasks)
 tasksRouter.post('/', createTask)
 tasksRouter.get('/mine', getMyTasks)
+tasksRouter.get('/analytics', getTaskAnalytics)
 tasksRouter.get('/:id', getTaskById)
 tasksRouter.patch('/:id', updateTaskById)
 tasksRouter.delete('/:id', deleteTaskById)

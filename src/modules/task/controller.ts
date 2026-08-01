@@ -14,32 +14,13 @@ type TaskEnvironment = {
   }
 }
 
-const getTasks: Handler<TaskEnvironment> = async (context) => {
+const getTasksWithFilter = async (context: Parameters<Handler<TaskEnvironment>>[0], filter = {}) => {
   try {
     const parsedQuery = getTasksRequestSchema.safeParse(context.req.query())
     if (!parsedQuery.success) {
       return context.json({ error: parsedQuery.error.message }, 400)
     }
     const { page, limit } = parsedQuery.data
-    const tasks = await Task.find({})
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ createdAt: -1 })
-    const totalTasks = await Task.countDocuments()
-    return context.json({ data: tasks, meta: { total: totalTasks }, success: true })
-  } catch (error) {
-    return context.json({ error: (error as Error).message }, 500)
-  }
-}
-
-const getMyTasks: Handler<TaskEnvironment> = async (context) => {
-  try {
-    const parsedQuery = getTasksRequestSchema.safeParse(context.req.query())
-    if (!parsedQuery.success) {
-      return context.json({ error: parsedQuery.error.message }, 400)
-    }
-    const { page, limit } = parsedQuery.data
-    const filter = { assignee: context.var.userId }
     const tasks = await Task.find(filter)
       .skip((page - 1) * limit)
       .limit(limit)
@@ -50,6 +31,11 @@ const getMyTasks: Handler<TaskEnvironment> = async (context) => {
     return context.json({ error: (error as Error).message }, 500)
   }
 }
+
+const getTasks: Handler<TaskEnvironment> = (context) => getTasksWithFilter(context)
+
+const getMyTasks: Handler<TaskEnvironment> = (context) =>
+  getTasksWithFilter(context, { assignee: context.var.userId })
 
 const createTask: Handler<TaskEnvironment> = async (context) => {
   try {

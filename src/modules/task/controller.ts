@@ -14,7 +14,10 @@ type TaskEnvironment = {
   }
 }
 
-const getTasksWithFilter = async (context: Parameters<Handler<TaskEnvironment>>[0], filter = {}) => {
+const getTasksWithFilter = async (
+  context: Parameters<Handler<TaskEnvironment>>[0],
+  filter = {},
+) => {
   try {
     const parsedQuery = getTasksRequestSchema.safeParse(context.req.query())
     if (!parsedQuery.success) {

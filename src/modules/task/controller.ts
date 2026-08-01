@@ -1,5 +1,5 @@
 import type { Handler } from 'hono'
-import { isValidObjectId } from 'mongoose'
+import { isValidObjectId, Types } from 'mongoose'
 import { TaskNotFoundError } from './errors'
 import { Task } from './mongo-model'
 import {
@@ -42,10 +42,11 @@ const getMyTasks: Handler<TaskEnvironment> = (context) =>
 
 const getTaskAnalytics: Handler<TaskEnvironment> = async (context) => {
   try {
+    const userId = new Types.ObjectId(context.var.userId)
     const tasksByStatus = await Task.aggregate<{ status: string; count: number }>([
       {
         $match: {
-          assignee: context.var.userId,
+          assignee: userId,
           status: { $exists: true, $ne: 'completed' },
         },
       },
@@ -53,7 +54,6 @@ const getTaskAnalytics: Handler<TaskEnvironment> = async (context) => {
       { $project: { _id: 0, status: '$_id', count: 1 } },
       { $sort: { status: 1 } },
     ])
-
     return context.json({ data: tasksByStatus, success: true })
   } catch (error) {
     return context.json({ error: (error as Error).message }, 500)

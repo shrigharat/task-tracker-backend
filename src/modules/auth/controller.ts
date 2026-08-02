@@ -1,6 +1,10 @@
 import { type Context, Handler } from 'hono'
+import { getCookie } from 'hono/cookie'
+import jwt from 'jsonwebtoken'
 import { UserLoginSchema, UserRegistrationSchema } from './request-schema'
 import { redisClient } from '../../lib/redis/client'
+import { ENVIRONMENT_CONFIG } from '../../constants/environment'
+import { JWT_CONFIG } from '../../constants/jwt'
 import {
   checkIfUserExists,
   createAccessToken,
@@ -141,4 +145,41 @@ const loginUser: Handler = async (context) => {
   }
 }
 
-export { registerUser, loginUser, validateUserRegistrationRequest, validateUserLoginRequest }
+const refreshAccessToken: Handler = async (context) => {
+  const refreshToken = getCookie(context, 'refresh_token')
+  if (!refreshToken) {
+    return context.json({ success: false, message: 'Invalid or expired refresh token' }, 401)
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, ENVIRONMENT_CONFIG.REFRESH_TOKEN_SECRET, {
+      issuer: JWT_CONFIG.ISSUER,
+      audience: JWT_CONFIG.AUDIENCE,
+      subject: JWT_CONFIG.SUBJECT,
+    })
+    const userId = typeof payload === 'object' ? payload.userId : undefined
+    if (typeof userId !== 'string') {
+      return context.json({ success: false, message: 'Invalid or expired refresh token' }, 401)
+    }
+
+    const storedRefreshToken = await redisClient?.get(`refresh:${userId}`)
+    if (!storedRefreshToken || storedRefreshToken !== refreshToken) {
+      return context.json({ success: false, message: 'Invalid or expired refresh token' }, 401)
+    }
+
+    const accessToken = await createAccessToken(userId)
+    await setAccessTokenInCookie(context, accessToken)
+    return context.json({ success: true, message: 'Access token refreshed' }, 200)
+  } catch (error) {
+    console.error(error)
+    return context.json({ success: false, message: 'Invalid or expired refresh token' }, 401)
+  }
+}
+
+export {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+  validateUserRegistrationRequest,
+  validateUserLoginRequest,
+}

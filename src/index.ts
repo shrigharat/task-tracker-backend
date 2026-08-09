@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { serve } from '@hono/node-server'
+import { cors } from 'hono/cors'
 import { connect as connectToMongo } from './lib/mongo/client'
 import { connectRedis } from './lib/redis/client'
 import { authRouter } from './modules/auth/routes'
@@ -11,6 +12,14 @@ import { connectRMQ } from './lib/rmq/client'
 import { initializeUserSignupEmailChannel } from './lib/rmq/channels/user-signup-email'
 import { tasksRouter } from './modules/task/routes'
 const app = new Hono<{ Variables: { userId: string } }>()
+
+app.use(
+  '*',
+  cors({
+    origin: ENVIRONMENT_CONFIG.CORS_ALLOWED_ORIGINS,
+    credentials: true,
+  }),
+)
 
 app.route('/auth', authRouter)
 app.route('/tasks', tasksRouter)

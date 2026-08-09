@@ -14,28 +14,44 @@ import {
   setRefreshTokenInCookie,
 } from './service'
 import {
-  InvalidFormDataError,
+  InvalidJsonPayloadError,
   UserEmailAlreadyExistsError,
   UserEmailNotRegisteredError,
   UserEmailPasswordMismatchError,
 } from './errors'
 import { publishUserSignupEmail } from '@/lib/rmq/publishers/user-signup.publisher'
 import { userSignupEmailChannel } from '@/lib/rmq/channels/user-signup-email'
+import { User } from './mongo-model'
+
+type AuthEnvironment = {
+  Variables: {
+    userId: string
+  }
+}
+
+const getJsonRequestBody = async (context: Context): Promise<unknown> => {
+  if (!context.req.header('content-type')?.toLowerCase().startsWith('application/json')) {
+    throw new InvalidJsonPayloadError()
+  }
+
+  try {
+    return await context.req.json()
+  } catch {
+    throw new InvalidJsonPayloadError()
+  }
+}
 
 const validateUserRegistrationRequest = async (context: Context) => {
-  const formData = await context.req.formData()
-  const email = formData.get('email')?.toString().toLowerCase() ?? ''
-  const password = formData.get('password')?.toString() ?? ''
-  const parsed = UserRegistrationSchema.safeParse({ email, password })
+  const parsed = UserRegistrationSchema.safeParse(await getJsonRequestBody(context))
   if (!parsed.success) {
-    throw new InvalidFormDataError()
+    throw new InvalidJsonPayloadError()
   }
   return parsed.data
 }
 
 const registerUser: Handler = async (context) => {
-  const parsedData = await validateUserRegistrationRequest(context)
   try {
+    const parsedData = await validateUserRegistrationRequest(context)
     await createUser(parsedData.email, parsedData.password)
     if (userSignupEmailChannel) {
       await publishUserSignupEmail(parsedData.email, userSignupEmailChannel)
@@ -53,10 +69,10 @@ const registerUser: Handler = async (context) => {
         409,
       )
     }
-    if (error instanceof InvalidFormDataError) {
+    if (error instanceof InvalidJsonPayloadError) {
       return context.json(
         {
-          message: 'Invalid form data',
+          message: 'Invalid JSON payload',
           error: error.message,
           success: false,
         },
@@ -75,20 +91,16 @@ const registerUser: Handler = async (context) => {
 }
 
 const validateUserLoginRequest = async (context: Context) => {
-  const formData = await context.req.formData()
-  const email = formData.get('email')?.toString() ?? ''
-  const password = formData.get('password')?.toString() ?? ''
-  const parsed = UserLoginSchema.safeParse({ email, password })
+  const parsed = UserLoginSchema.safeParse(await getJsonRequestBody(context))
   if (!parsed.success) {
-    throw new InvalidFormDataError()
+    throw new InvalidJsonPayloadError()
   }
   return parsed.data
 }
 
 const loginUser: Handler = async (context) => {
-  const parsedData = await validateUserLoginRequest(context)
-
   try {
+    const parsedData = await validateUserLoginRequest(context)
     const user = await checkIfUserExists(parsedData.email, parsedData.password)
     const accessToken = await createAccessToken(user._id.toString())
     const refreshToken = await createRefreshToken(user._id.toString())
@@ -104,10 +116,10 @@ const loginUser: Handler = async (context) => {
     return context.json({ success: true, message: 'Login successful' }, 200)
   } catch (error: unknown) {
     console.error(error)
-    if (error instanceof InvalidFormDataError) {
+    if (error instanceof InvalidJsonPayloadError) {
       return context.json(
         {
-          message: 'Invalid form data',
+          message: 'Invalid JSON payload',
           error: error.message,
           success: false,
         },
@@ -176,7 +188,30 @@ const refreshAccessToken: Handler = async (context) => {
   }
 }
 
+const getCurrentUser: Handler<AuthEnvironment> = async (context) => {
+  try {
+    const user = await User.findById(context.var.userId).select('_id email').lean()
+
+    if (!user) {
+      return context.json({ success: false, message: 'Authentication required' }, 401)
+    }
+
+    context.header('Cache-Control', 'no-store')
+    return context.json({
+      data: {
+        id: user._id.toString(),
+        email: user.email,
+      },
+      success: true,
+    })
+  } catch (error) {
+    console.error(error)
+    return context.json({ success: false, message: 'Failed to retrieve user details' }, 500)
+  }
+}
+
 export {
+  getCurrentUser,
   registerUser,
   loginUser,
   refreshAccessToken,
